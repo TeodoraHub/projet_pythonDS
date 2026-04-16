@@ -5,6 +5,7 @@ import numpy as np
 import requests
 from io import StringIO
 from scipy.stats import pearsonr, spearmanr, shapiro
+from great_tables import GT, style, loc
 
 
 # URL directe du fichier CSV ADEME sur data.ademe.fr
@@ -67,40 +68,40 @@ def charger_sinoe(df) -> pd.DataFrame:
     )
 
     # etape 3 Les codes département doivent être sur 2 caractères pour les jointures
-    df["code_dept"]   = df["C_DEPT"].astype(str).str.zfill(2)
+    df["code_dept"] = df["C_DEPT"].astype(str).str.zfill(2)
     df["departement"] = df["N_DEPT"]
 
     # etape 4 Conserver la dernière année disponible
     annee_max = df["ANNEE"].max()
-    df        = df[df["ANNEE"] == annee_max].copy()
+    df = df[df["ANNEE"] == annee_max].copy()
     print(f"\nAnnée retenue : {annee_max}  ({len(df)} lignes après filtre)")
 
     # etape 5 Marquage des lignes par type de valorisation
     # Deux colonnes booléennes (True/False) pour distinguer les composantes
-    df["est_valo_matiere"]   = df["L_TYP_REG_SERVICE"] == "Valorisation matière"
+    df["est_valo_matiere"] = df["L_TYP_REG_SERVICE"] == "Valorisation matière"
     df["est_valo_organique"] = df["L_TYP_REG_SERVICE"] == "Valorisation organique"
 
     # On crée des colonnes de tonnage conditionnelles AVANT le groupby.
     # where(condition, 0) : garde le tonnage si la condition est vraie, sinon met 0.
-    df["tonnage_si_matiere"]   = df["TONNAGE_DMA"].where(df["est_valo_matiere"],   0)
+    df["tonnage_si_matiere"] = df["TONNAGE_DMA"].where(df["est_valo_matiere"],   0)
     df["tonnage_si_organique"] = df["TONNAGE_DMA"].where(df["est_valo_organique"], 0)
 
     # etape 6 Pour chaque département, on somme les tonnages selon leur type.
     dept = (
         df.groupby(["code_dept", "departement"], as_index=False)
         .agg(
-            tonnage_total          = ("TONNAGE_DMA",          "sum"),
-            tonnage_valo_matiere   = ("tonnage_si_matiere",   "sum"),
-            tonnage_valo_organique = ("tonnage_si_organique", "sum"),
+            tonnage_total=("TONNAGE_DMA",          "sum"),
+            tonnage_valo_matiere=("tonnage_si_matiere",   "sum"),
+            tonnage_valo_organique=("tonnage_si_organique", "sum"),
         )
     )
 
     # Calcul des taux de valorisation (en %)
     # Taux = tonnage valorisé / tonnage total × 100
-    dept["tonnage_valo_total"]      = dept["tonnage_valo_matiere"] + dept["tonnage_valo_organique"]
-    dept["taux_valo_total_pct"]     = dept["tonnage_valo_total"]    / dept["tonnage_total"] * 100
-    dept["taux_valo_matiere_pct"]   = dept["tonnage_valo_matiere"]  / dept["tonnage_total"] * 100
-    dept["taux_valo_organique_pct"] = dept["tonnage_valo_organique"]/ dept["tonnage_total"] * 100
+    dept["tonnage_valo_total"] = dept["tonnage_valo_matiere"] + dept["tonnage_valo_organique"]
+    dept["taux_valo_total_pct"] = dept["tonnage_valo_total"] / dept["tonnage_total"] * 100
+    dept["taux_valo_matiere_pct"] = dept["tonnage_valo_matiere"] / dept["tonnage_total"] * 100
+    dept["taux_valo_organique_pct"] = dept["tonnage_valo_organique"] / dept["tonnage_total"] * 100
 
     print(f"{len(dept)} départements après agrégation")
     return dept
@@ -139,7 +140,7 @@ def charger_ruralite(path: str) -> pd.DataFrame:
     types_ruraux = ["Communes peu denses", "Communes très peu denses"]
     df["est_rural"] = df["lib_typologie"].isin(types_ruraux)
 
-   # On agrège par département
+    # On agrège par département
     dept = (
         df.groupby("code_dept", as_index=False)
         .agg(
@@ -204,7 +205,7 @@ def scatter_regression(ax, df, x_col, y_col, x_label, y_label, color, n_outliers
     - color    : couleur des points
     - n_outliers : nombre de départements extrêmes à annoter (défaut : 3)
     """
-    
+
     # Suppression des lignes avec valeurs manquantes
     tmp = df[[x_col, y_col, "departement"]].dropna()
 
@@ -249,13 +250,13 @@ def attribuer_profil(row, med_valo, med_rural):
     - "Rural  / valorisation faible"
     - "Rural  / valorisation forte"
     """
-    valo  = row["taux_valo_total_pct"]       >= med_valo
+    valo = row["taux_valo_total_pct"] >= med_valo
     rural = row["part_communes_rurales_pct"] >= med_rural
 
-    if   not rural and not valo: return "Urbain / valorisation faible"
+    if not rural and not valo: return "Urbain / valorisation faible"
     elif not rural and     valo: return "Urbain / valorisation forte"
-    elif     rural and not valo: return "Rural  / valorisation faible"
-    else:                        return "Rural  / valorisation forte"
+    elif rural and not valo: return "Rural  / valorisation faible"
+    else: return "Rural  / valorisation forte"
 
 
 def afficher_correlations(df, x_col, y_col, x_label, y_label):
@@ -389,3 +390,33 @@ def diagnostics_ols(modele, titre):
     else:
         print("→ Résidus non normaux (p < 0.05) attention — interpréter les IC avec prudence")
 
+
+# Fonction pour formater et afficher une table avec Great Tables
+def afficher_gt_part_modale(df_pct, annee):
+    df_plot = df_pct.reset_index()
+    
+    # Sécurité pour les noms de colonnes
+    new_cols = ['Département']
+    for col in df_plot.columns[1:]:
+        # Si c'est un tuple (MultiIndex), on prend le libellé, sinon on garde tel quel
+        new_cols.append(col[1] if isinstance(col, tuple) else col)
+    df_plot.columns = new_cols
+
+    # Liste des colonnes numériques pour le formatage
+    cols_numeriques = [c for c in df_plot.columns if c != 'Département']
+
+    return (
+        GT(df_plot)
+        .tab_header(
+            title=f"Parts modales de transport par département en {annee}",
+            subtitle="Répartition en % des actifs"
+        )
+        .fmt_number(
+            columns=cols_numeriques,
+            decimals=1
+        )
+        .tab_options(
+            table_width="100%",
+            heading_align="left"
+        )
+    )
