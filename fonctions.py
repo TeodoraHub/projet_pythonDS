@@ -1,8 +1,5 @@
 import pandas as pd
-import geopandas as gpd
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import seaborn as sns
 import statsmodels.api as sm
 import numpy as np
 import requests
@@ -39,6 +36,7 @@ def get_ademe_data() -> pd.DataFrame:
     df = pd.read_csv(StringIO(response.text), sep=None, engine='python')
     print(f"Fichier ADEME chargé : {df.shape[0]} lignes × {df.shape[1]} colonnes")
     return df
+
 
 def charger_sinoe(path: str) -> pd.DataFrame:
     """Charge et nettoie les données SINOE.
@@ -100,6 +98,7 @@ def charger_sinoe(path: str) -> pd.DataFrame:
     print(f"{len(dept)} départements après agrégation")
     return dept
 
+
 def charger_ruralite(path: str) -> pd.DataFrame:
     """Charge et nettoie les données FET (grille de densité INSEE).
     
@@ -142,6 +141,7 @@ def charger_ruralite(path: str) -> pd.DataFrame:
     print(f"{len(dept)} départements après agrégation")
     return dept
 
+
 def charger_niveau_vie(path: str) -> pd.DataFrame:
     """Charge et nettoie les données INSEE sur le niveau de vie médian.
     
@@ -172,8 +172,8 @@ def charger_niveau_vie(path: str) -> pd.DataFrame:
     print(f"\nValeurs manquantes sur niveau_vie_median : {df['niveau_vie_median'].isna().sum()}")
     return df[["code_dept", "departement_rev", "niveau_vie_median"]]
 
-# Fonction : nuage de points avec régression 
 
+# Fonction : nuage de points avec régression 
 def scatter_regression(ax, df, x_col, y_col, x_label, y_label, color, n_outliers=3):
     """Nuage de points avec droite de régression et annotation des outliers.
     Les outliers annotés sont les départements dont l'écart à la droite de
@@ -206,6 +206,7 @@ def scatter_regression(ax, df, x_col, y_col, x_label, y_label, color, n_outliers
     ax.set_title(f"{y_label} ~ {x_label}\nr = {r:.3f}  (p = {p:.4f})", fontsize=9)
     ax.legend(fontsize=8)
 
+
 def attribuer_profil(row, med_valo, med_rural):
     """Retourne le profil territorial d'un département selon ses médianes."""
     valo  = row["taux_valo_total_pct"]       >= med_valo
@@ -215,7 +216,6 @@ def attribuer_profil(row, med_valo, med_rural):
     elif not rural and     valo: return "Urbain / valorisation forte"
     elif     rural and not valo: return "Rural  / valorisation faible"
     else:                        return "Rural  / valorisation forte"
-
 
 
 def afficher_correlations(df, x_col, y_col, x_label, y_label):
@@ -234,7 +234,6 @@ def afficher_correlations(df, x_col, y_col, x_label, y_label):
     print(f"  Pearson  r = {r_p:.3f}  (p = {p_p:.6f})")
     print(f"  Spearman ρ = {r_s:.3f}  (p = {p_s:.6f})")
     print(f"  → {sig} au seuil 5 %\n")
-
 
 
 def regression_ols(df, var_y, label_y):
@@ -290,7 +289,6 @@ def regression_ols(df, var_y, label_y):
     display(synthese)
     print("* = significatif à 5 % | ns = non significatif")
     return mod1, mod2, mod3
-
 
 
 # Fonction : graphiques de diagnostic 
