@@ -165,10 +165,10 @@ Le nombre de clusters k=4 a été retenu via la **méthode du coude**
 
 | Cluster | Couleur | Profil | Valorisation | Ruralité | Niveau de vie |
 |---|---|---|---|---|---|
-| 0 | Vert | Rural / valorisation moyenne | 46% | 90% | 22 386€ |
-| 1 | Bleu | Urbain / riche | 39% | 31% | 28 925€ |
-| 2 | Jaune | Rural / valorisation forte | 63% | 90% | 22 383€ |
-| 3 | Gris | Urbain / revenu intermédiaire | 38% | 31% | 23 170€ |
+| 0 | Vert clair | Rural / valorisation moyenne | 46% | 90% | 22 386€ |
+| 1 | Rouge | Urbain / riche | 39% | 31% | 28 925€ |
+| 2 | Vert foncé | Rural / valorisation forte | 63% | 90% | 22 383€ |
+| 3 | Jaune | Urbain / revenu intermédiaire | 38% | 31% | 23 170€ |
 
 ### Enseignement principal
 Les clusters 0 et 2 ont le même profil territorial et socio-économique
