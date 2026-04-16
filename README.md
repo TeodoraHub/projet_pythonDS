@@ -1,6 +1,6 @@
 # Recyclage et territoire : à la recherche d'un profil écologique géographique ?
 
-Projet de data science explorant les liens entre **caractéristiques territoriales**
+Projet de data science explorant les liens entre **caractéristiques territoriales** (ruralité, niveau de vie, transport)
 et **taux de valorisation des déchets ménagers** en France métropolitaine.
 
 ---
@@ -18,6 +18,9 @@ département à l'autre. Ce projet cherche à répondre à deux hypothèses :
 La valorisation est analysée en **deux composantes séparées** :
 - **Valorisation matière** : recyclage (plastique, verre, papier, métal...)
 - **Valorisation organique** : compostage, méthanisation
+
+On s'interesse aussi à l'effet "transport" (type de déplacement).
+
 
 ---
 
@@ -100,6 +103,41 @@ Ouvrir `notebook_recyclage_projet_python2.ipynb` dans VS Code, puis :
 | 5 | Conclusion |
 
 ---
+## Les variables importantes
+| Variable | Source | Description | Unité |
+|---|---|---|---|
+| `taux_valo_total_pct` | SINOE | Taux de valorisation total (matière + organique) | % du tonnage total |
+| `taux_valo_matiere_pct` | SINOE | Taux de valorisation matière (recyclage) | % du tonnage total |
+| `taux_valo_organique_pct` | SINOE | Taux de valorisation organique (compostage, méthanisation) | % du tonnage total |
+| `part_communes_rurales_pct` | FET INSEE | Part de communes peu ou très peu denses dans le département | % du nombre de communes |
+| `niveau_vie_median` | Filosofi INSEE | Niveau de vie annuel médian par département | € / an / UC |
+| `interaction_rural_revenu` | Calculée | Produit ruralité × niveau de vie (terme d'interaction pour la régression) | — |
+
+> **UC** = unité de consommation (mesure INSEE du revenu par ménage ajustée à sa taille)
+
+## Choix du modèle
+
+Nous avons opté pour une **régression linéaire OLS** (moindres carrés ordinaires) pour deux raisons :
+
+- La variable à expliquer (taux de valorisation) est **continue**
+- On cherche à mesurer l'**effet marginal** de chaque variable explicative
+
+
+### Trois modèles emboîtés
+
+| Modèle | Variables | Objectif |
+|---|---|---|
+| Modèle 1 | Ruralité | Tester l'hypothèse territoriale seule |
+| Modèle 2 | Ruralité + niveau de vie | Tester l'hypothèse socio-économique |
+| Modèle 3 | Ruralité + niveau de vie + interaction | Tester si les deux effets sont interdépendants |
+
+Le **R² ajusté** permet de comparer les modèles : si l'ajout d'une variable ne l'améliore pas, elle n'est pas utile.
+
+### Limites du modèle
+
+- Le **R² reste modéré** (~18% pour la valorisation totale) : d'autres facteurs non mesurés ici jouent un rôle (densité de déchèteries, politiques locales, part de maisons individuelles)
+- Les **résidus ne sont pas parfaitement normaux** (test de Shapiro-Wilk p < 0.05) : les p-values sont à interpréter avec prudence
+- L'analyse est **transversale** (une seule année) : elle ne permet pas de conclure sur des effets causaux
 
 ## Résultats principaux
 
@@ -115,3 +153,10 @@ Ouvrir `notebook_recyclage_projet_python2.ipynb` dans VS Code, puis :
 ## Auteurs
 
 Projet réalisé par Teodora Moldovan, Delphine Monnier Ragaigne et Mounene Kpakou dans le cadre du cours de Python pour la data science.
+
+## Sources des données (pour aller plus loin)
+
+- [SINOE — ADEME](https://data.ademe.fr/datasets/sinoe-(r)-destination-des-dma-collectes-par-type-de-traitement) : données complètes sur les déchets ménagers
+- [Grille de densité communale — INSEE](https://www.insee.fr/fr/information/6439600) : méthodologie et téléchargement FET
+- [Filosofi — INSEE](https://www.insee.fr/fr/metadonnees/source/serie/s1172) : revenus et niveaux de vie des ménages
+- [API ADEME data.ademe.fr](https://data.ademe.fr/api-doc) : documentation de l'API utilisée pour charger les données SINOE
