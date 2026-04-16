@@ -29,8 +29,8 @@ La valorisation est analysée en **deux composantes séparées** :
 | INSEE         | `FET2021-19.xlsx`                             | Grille de densité communale (urbain/rural) | [insee.fr](https://insee.fr) |
 | INSEE         | `niv2021.xlsx`                                | Niveau de vie médian annuel par département| [insee.fr](https://insee.fr) |
 
-> ⚠️ Les 3 premières lignes de `niv2021.xlsx` ont été supprimées manuellement.
-> Les fichiers doivent être placés dans le **même répertoire** que le notebook.
+>  Les 3 premières lignes de `niv2021.xlsx` ont été supprimées manuellement.
+Les fichiers de données sont sur onyxia avec un lien directement dans le notebook.
 > Les données SINOE peuvent aussi être chargées directement via l'API ADEME
 > (voir cellule dédiée dans le notebook).
 
@@ -54,7 +54,7 @@ projet_pythonDS/
 
 | Fonction | Description |
 |---|---|
-| `charger_sinoe(path)` | Charge et nettoie le fichier SINOE, calcule les taux de valorisation |
+| `charger_sinoe(path)` | lit et nettoie le fichier SINOE, calcule les taux de valorisation |
 | `get_ademe_data()` | Télécharge le fichier SINOE directement depuis l'API ADEME |
 | `charger_ruralite(path)` | Charge la grille de densité INSEE, calcule la part de communes rurales |
 | `charger_niveau_vie(path)` | Charge le niveau de vie médian par département |
@@ -74,7 +74,7 @@ git clone <url-du-repo>
 cd projet_pythonDS
 
 # 2. Installer les dépendances
-pip install -r requirements.txt
+pip install -r Requirements.txt
 ```
 
 ---
@@ -114,4 +114,4 @@ Ouvrir `notebook_recyclage_projet_python2.ipynb` dans VS Code, puis :
 
 ## Auteurs
 
-Projet réalisé par teodora Moldovan, Delphine Monnier Ragaigne et Mounene Kpakou dans le cadre du cours de Python pour la data science.
+Projet réalisé par Teodora Moldovan, Delphine Monnier Ragaigne et Mounene Kpakou dans le cadre du cours de Python pour la data science.
