@@ -5,7 +5,7 @@ import numpy as np
 import requests
 from io import StringIO
 from scipy.stats import pearsonr, spearmanr, shapiro
-from great_tables import GT, style, loc
+from great_tables import GT
 
 
 # URL directe du fichier CSV ADEME sur data.ademe.fr
@@ -28,20 +28,21 @@ def get_ademe_data() -> pd.DataFrame:
     # Téléchargement du fichier via une requête HTTP GET
     response = requests.get(ADEME_CSV_URL)
 
-    # raise_for_status() : lève une erreur si le téléchargement a échoué
+    # raise_for_status() lève une erreur si le téléchargement a échoué
     # (ex : erreur 404 fichier introuvable, 500 serveur indisponible)
     response.raise_for_status()
 
     # StringIO permet de lire le texte téléchargé comme si c'était un fichier
     # sep=None + engine='python' : détection automatique du séparateur
-    df = pd.read_csv(StringIO(response.text), sep=None, engine='python')
+    df = pd.read_csv(StringIO(response.text), sep=None, engine="python")
     print(f"Fichier ADEME chargé : {df.shape[0]} lignes × {df.shape[1]} colonnes")
     return df
 
 
-def charger_sinoe(df) -> pd.DataFrame:
-    """Charge et nettoie les données SINOE.
-    
+def charger_sinoe(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Charge et nettoie les données SINOE.
+
     Étapes :
     1. Lecture du CSV
     2. Correction du format décimal (virgule → point)
@@ -54,44 +55,44 @@ def charger_sinoe(df) -> pd.DataFrame:
     - tonnage_total, tonnage_valo_matiere, tonnage_valo_organique
     - taux_valo_total_pct, taux_valo_matiere_pct, taux_valo_organique_pct
     """
-    # etape 1 lecture du fichier csv
+    # Étape 1 : aperçu des données brutes
     print(f"Dimensions brutes : {df.shape}")
     print(f"Années disponibles : {sorted(df['ANNEE'].unique())}")
     print(f"Types de traitement : {df['L_TYP_REG_SERVICE'].unique().tolist()}")
 
-    # etape 2 Nettoyage du tonnage (virgule devient point pour python). On passe ensuite en float
+    # Étape 2 : nettoyage du tonnage (virgule → point pour Python)
     df["TONNAGE_DMA"] = (
         df["TONNAGE_DMA"]
-        .astype(str)                          # s'assurer que c'est du texte
-        .str.replace(",", ".", regex=False)   # "98575,13" → "98575.13"
-        .astype(float)                        # conversion en nombre décimal
+        .astype(str)                         # s'assurer que c'est du texte
+        .str.replace(",", ".", regex=False)  # "98575,13" → "98575.13"
+        .astype(float)                       # conversion en nombre décimal
     )
 
-    # etape 3 Les codes département doivent être sur 2 caractères pour les jointures
+    # Étape 3 : codes département sur 2 caractères pour les jointures
     df["code_dept"] = df["C_DEPT"].astype(str).str.zfill(2)
     df["departement"] = df["N_DEPT"]
 
-    # etape 4 Conserver la dernière année disponible
+    # Étape 4 : conserver uniquement la dernière année disponible
     annee_max = df["ANNEE"].max()
     df = df[df["ANNEE"] == annee_max].copy()
     print(f"\nAnnée retenue : {annee_max}  ({len(df)} lignes après filtre)")
 
-    # etape 5 Marquage des lignes par type de valorisation
+    # Étape 5 : marquage des lignes par type de valorisation
     # Deux colonnes booléennes (True/False) pour distinguer les composantes
     df["est_valo_matiere"] = df["L_TYP_REG_SERVICE"] == "Valorisation matière"
     df["est_valo_organique"] = df["L_TYP_REG_SERVICE"] == "Valorisation organique"
 
-    # On crée des colonnes de tonnage conditionnelles AVANT le groupby.
-    # where(condition, 0) : garde le tonnage si la condition est vraie, sinon met 0.
-    df["tonnage_si_matiere"] = df["TONNAGE_DMA"].where(df["est_valo_matiere"],   0)
+    # Colonnes de tonnage conditionnelles créées avant le groupby.
+    # where(condition, 0) : garde le tonnage si la condition est vraie, sinon 0.
+    df["tonnage_si_matiere"] = df["TONNAGE_DMA"].where(df["est_valo_matiere"], 0)
     df["tonnage_si_organique"] = df["TONNAGE_DMA"].where(df["est_valo_organique"], 0)
 
-    # etape 6 Pour chaque département, on somme les tonnages selon leur type.
+    # Étape 6 : agrégation par département
     dept = (
         df.groupby(["code_dept", "departement"], as_index=False)
         .agg(
-            tonnage_total=("TONNAGE_DMA",          "sum"),
-            tonnage_valo_matiere=("tonnage_si_matiere",   "sum"),
+            tonnage_total=("TONNAGE_DMA", "sum"),
+            tonnage_valo_matiere=("tonnage_si_matiere", "sum"),
             tonnage_valo_organique=("tonnage_si_organique", "sum"),
         )
     )
@@ -108,8 +109,9 @@ def charger_sinoe(df) -> pd.DataFrame:
 
 
 def charger_ruralite(path: str) -> pd.DataFrame:
-    """Charge et nettoie les données FET (grille de densité INSEE).
-    
+    """
+    Charge et nettoie les données FET (grille de densité INSEE).
+
     La grille de densité classe chaque commune en 4 catégories :
     - Communes densément peuplées
     - Communes de densité intermédiaire
@@ -118,29 +120,28 @@ def charger_ruralite(path: str) -> pd.DataFrame:
 
     Retourne un DataFrame à l'échelle départementale avec :
     - part_communes_rurales_pct : % de communes peu ou très peu denses
-    
+
     Remarque : l'indicateur n'est pas pondéré par la population,
     ce qui peut surreprésenter des communes faiblement peuplées.
     """
-    df = pd.read_excel(path, sheet_name="Figure 1", skiprows=2)
-    
     # skiprows=2 : les deux premières lignes sont un en-tête inutile
+    df = pd.read_excel(path, sheet_name="Figure 1", skiprows=2)
     df.columns = ["code_commune", "lib_commune", "code_typologie", "lib_typologie"]
 
     print(f"{len(df)} communes chargées")
     print(f"Typologies : {df['lib_typologie'].unique().tolist()}")
 
-    # Codes communes sur 5 caractères  
+    # Codes communes sur 5 caractères
     df["code_commune"] = df["code_commune"].astype(str).str.zfill(5)
 
-    # Codes département sur les 2 premiers caractères 
+    # Code département = 2 premiers caractères du code commune
     df["code_dept"] = df["code_commune"].str[:2]
 
-    # On identifie les communes rurales
+    # Identification des communes rurales
     types_ruraux = ["Communes peu denses", "Communes très peu denses"]
     df["est_rural"] = df["lib_typologie"].isin(types_ruraux)
 
-    # On agrège par département
+    # Agrégation par département
     dept = (
         df.groupby("code_dept", as_index=False)
         .agg(
@@ -148,46 +149,43 @@ def charger_ruralite(path: str) -> pd.DataFrame:
             nb_communes_rurales=("est_rural", "sum"),
         )
     )
-    # On calcule la part des communes rurales
+
+    # Part des communes rurales
     dept["part_communes_rurales_pct"] = (
         dept["nb_communes_rurales"] / dept["nb_communes"] * 100
     )
+
     print(f"{len(dept)} départements après agrégation")
     return dept
 
 
 def charger_niveau_vie(path: str) -> pd.DataFrame:
-    """Charge et nettoie les données INSEE sur le niveau de vie médian.
-    
+    """
+    Charge et nettoie les données INSEE sur le niveau de vie médian.
+
     Retourne un DataFrame à l'échelle départementale avec :
     - niveau_vie_median : niveau de vie annuel médian en euros
     """
-
-    # Lecture
     df = pd.read_excel(path, sheet_name="Territoire - Figure 1")
     print(f"Colonnes disponibles : {df.columns.tolist()}")
     print(f"Dimensions : {df.shape}")
 
-    # quelques changements de nom, code_dept pour harmoniser et departement_rev 
-    # pour département revenu
     df = df.rename(columns={
         "Code département": "code_dept",
         "Département": "departement_rev",
         "Niveau de vie annuel médian": "niveau_vie_median",
     })
-    
-    # Codes département sur les 2 premiers caractères 
+
+    # Codes département sur 2 caractères
     df["code_dept"] = df["code_dept"].astype(str).str.zfill(2)
 
-    #  Conversion numérique 
-    #  si une valeur n'est pas un nombre alors on l'enregistre comme NaN 
+    # Conversion numérique : valeurs non numériques enregistrées comme NaN
     df["niveau_vie_median"] = pd.to_numeric(df["niveau_vie_median"], errors="coerce")
 
     print(f"\nValeurs manquantes sur niveau_vie_median : {df['niveau_vie_median'].isna().sum()}")
     return df[["code_dept", "departement_rev", "niveau_vie_median"]]
 
 
-# Fonction : nuage de points avec régression 
 def scatter_regression(ax, df, x_col, y_col, x_label, y_label, color, n_outliers=3):
     """
     Trace un nuage de points avec droite de régression et annotation des outliers.
@@ -195,42 +193,48 @@ def scatter_regression(ax, df, x_col, y_col, x_label, y_label, color, n_outliers
     Les outliers annotés sont les départements dont l'écart à la droite de
     régression (résidu) est le plus grand en valeur absolue.
 
-    Paramètres :
-    - ax       : axe matplotlib sur lequel tracer
-    - df       : DataFrame contenant les données
-    - x_col    : nom de la colonne en abscisse
-    - y_col    : nom de la colonne en ordonnée
-    - x_label  : libellé affiché sur l'axe X et dans le titre
-    - y_label  : libellé affiché sur l'axe Y et dans le titre
-    - color    : couleur des points
-    - n_outliers : nombre de départements extrêmes à annoter (défaut : 3)
+    Paramètres
+    ----------
+    ax         : axe matplotlib sur lequel tracer
+    df         : DataFrame contenant les données
+    x_col      : nom de la colonne en abscisse
+    y_col      : nom de la colonne en ordonnée
+    x_label    : libellé affiché sur l'axe X et dans le titre
+    y_label    : libellé affiché sur l'axe Y et dans le titre
+    color      : couleur des points
+    n_outliers : nombre de départements extrêmes à annoter (défaut : 3)
     """
-
     # Suppression des lignes avec valeurs manquantes
     tmp = df[[x_col, y_col, "departement"]].dropna()
 
     # Nuage de points
     ax.scatter(tmp[x_col], tmp[y_col], alpha=0.6, color=color, edgecolors="white", s=50)
 
-    # Calcul et tracé de la droite de régression (degré 1 = linéaire)
+    # Droite de régression (degré 1 = linéaire)
     pente, ordonnee = np.polyfit(tmp[x_col], tmp[y_col], 1)
     x_range = np.linspace(tmp[x_col].min(), tmp[x_col].max(), 100)
-    ax.plot(x_range, pente * x_range + ordonnee,
-            "k--", linewidth=1.5, label="Régression linéaire")
+    ax.plot(
+        x_range,
+        pente * x_range + ordonnee,
+        "k--",
+        linewidth=1.5,
+        label="Régression linéaire",
+    )
 
-    # On annote les 3 outliers les plus éloignés de la droite
-    # Calcul des résidus : écart entre valeur réelle et valeur prédite par la droite
+    # Annotation des outliers les plus éloignés de la droite
+    # Calcul des résidus : écart entre valeur réelle et valeur prédite
     residus = tmp[y_col] - (pente * tmp[x_col] + ordonnee)
-    # nlargest(n) : les n plus grands résidus en valeur absolue = les outliers
     outliers = residus.abs().nlargest(n_outliers).index
     for idx in outliers:
         ax.annotate(
             tmp.loc[idx, "departement"],
             xy=(tmp.loc[idx, x_col], tmp.loc[idx, y_col]),
-            fontsize=7, xytext=(4, 4), textcoords="offset points"
+            fontsize=7,
+            xytext=(4, 4),
+            textcoords="offset points",
         )
 
-    # Corrélation de Pearson affichée avec le titre
+    # Corrélation de Pearson affichée dans le titre
     r, p = pearsonr(tmp[x_col], tmp[y_col])
     ax.set_title(f"{y_label} ~ {x_label}\nr = {r:.3f}  (p = {p:.4f})", fontsize=9)
     ax.legend(fontsize=8)
@@ -241,8 +245,8 @@ def attribuer_profil(row, med_valo, med_rural):
     Attribue un profil territorial à un département.
 
     Croise deux critères binaires (au-dessus/en-dessous de la médiane) :
-    - Ruralité : part de communes rurales vs médiane nationale
-    - Valorisation : taux de valorisation total vs médiane nationale
+    - Ruralité      : part de communes rurales vs médiane nationale
+    - Valorisation  : taux de valorisation total vs médiane nationale
 
     Retourne une chaîne parmi :
     - "Urbain / valorisation faible"
@@ -253,26 +257,32 @@ def attribuer_profil(row, med_valo, med_rural):
     valo = row["taux_valo_total_pct"] >= med_valo
     rural = row["part_communes_rurales_pct"] >= med_rural
 
-    if not rural and not valo: return "Urbain / valorisation faible"
-    elif not rural and     valo: return "Urbain / valorisation forte"
-    elif rural and not valo: return "Rural  / valorisation faible"
-    else: return "Rural  / valorisation forte"
+    if not rural and not valo:
+        return "Urbain / valorisation faible"
+    elif not rural and valo:
+        return "Urbain / valorisation forte"
+    elif rural and not valo:
+        return "Rural  / valorisation faible"
+    else:
+        return "Rural  / valorisation forte"
 
 
 def afficher_correlations(df, x_col, y_col, x_label, y_label):
     """
     Calcule et affiche les corrélations de Pearson et Spearman.
+
     Pearson  : mesure l'association LINÉAIRE. Sensible aux outliers.
     Spearman : mesure l'association MONOTONE (sur les rangs). Plus robuste.
+
     Si les deux divergent → la relation n'est pas strictement linéaire,
     ou des départements extrêmes "tirent" la corrélation de Pearson.
     """
-    # On retire les valeurs manquantes avant le calcul
     tmp = df[[x_col, y_col]].dropna()
-    r_p, p_p = pearsonr(tmp[x_col],  tmp[y_col])
+    r_p, p_p = pearsonr(tmp[x_col], tmp[y_col])
     r_s, p_s = spearmanr(tmp[x_col], tmp[y_col])
     sig = "significatif" if p_p < 0.05 else "non significatif"
-    print(f"  {x_label} X {y_label}")
+
+    print(f"  {x_label} × {y_label}")
     print(f"  Pearson  r = {r_p:.3f}  (p = {p_p:.6f})")
     print(f"  Spearman ρ = {r_s:.3f}  (p = {p_s:.6f})")
     print(f"  → {sig} au seuil 5 %\n")
@@ -281,66 +291,76 @@ def afficher_correlations(df, x_col, y_col, x_label, y_label):
 def regression_ols(df, var_y, label_y):
     """
     Estime 3 modèles OLS emboîtés et affiche un tableau de synthèse.
+
     Modèle 1 : ruralité seule
     Modèle 2 : ruralité + niveau de vie
     Modèle 3 : ruralité + niveau de vie + interaction
-    Modèles "emboîtés" : chaque modèle ajoute une variable au précédent.
+
+    Les modèles sont « emboîtés » : chaque modèle ajoute une variable au précédent.
     On compare le R² ajusté pour évaluer l'apport marginal de chaque variable.
     Si le R² ajusté n'augmente pas, la variable ajoutée n'est pas utile.
     """
-    cols = [var_y, "part_communes_rurales_pct", "niveau_vie_median",
-            "interaction_rural_revenu"]
+    cols = [var_y, "part_communes_rurales_pct", "niveau_vie_median", "interaction_rural_revenu"]
     tmp = df[cols].dropna()
-    y   = tmp[var_y]
+    y = tmp[var_y]
 
     # sm.add_constant() ajoute une colonne de 1 pour estimer l'ordonnée à l'origine
     X1 = sm.add_constant(tmp[["part_communes_rurales_pct"]])
     X2 = sm.add_constant(tmp[["part_communes_rurales_pct", "niveau_vie_median"]])
-    X3 = sm.add_constant(tmp[["part_communes_rurales_pct", "niveau_vie_median",
-                               "interaction_rural_revenu"]])
-    
+    X3 = sm.add_constant(
+        tmp[["part_communes_rurales_pct", "niveau_vie_median", "interaction_rural_revenu"]]
+    )
+
     # Estimation des modèles par OLS (moindres carrés ordinaires)
     mod1 = sm.OLS(y, X1).fit()
     mod2 = sm.OLS(y, X2).fit()
     mod3 = sm.OLS(y, X3).fit()
 
     def fmt(mod, var):
-        if var not in mod.params: return "—"
+        if var not in mod.params:
+            return "—"
         sig = "*" if mod.pvalues[var] < 0.05 else "ns"
         return f"{mod.params[var]:.4f} ({sig})"
 
     # Tableau de synthèse des 3 modèles
-    synthese = pd.DataFrame({
-        "Modèle 1 (ruralité)": [
-            fmt(mod1, "part_communes_rurales_pct"), "—", "—",
-            f"{mod1.rsquared:.3f}", f"{mod1.rsquared_adj:.3f}",
-        ],
-        "Modèle 2 (+revenu)": [
-            fmt(mod2, "part_communes_rurales_pct"),
-            fmt(mod2, "niveau_vie_median"), "—",
-            f"{mod2.rsquared:.3f}", f"{mod2.rsquared_adj:.3f}",
-        ],
-        "Modèle 3 (+interaction)": [
-            fmt(mod3, "part_communes_rurales_pct"),
-            fmt(mod3, "niveau_vie_median"),
-            fmt(mod3, "interaction_rural_revenu"),
-            f"{mod3.rsquared:.3f}", f"{mod3.rsquared_adj:.3f}",
-        ],
-    }, index=["Part communes rurales", "Niveau de vie médian",
-              "Interaction", "R²", "R² ajusté"])
+    synthese = pd.DataFrame(
+        {
+            "Modèle 1 (ruralité)": [
+                fmt(mod1, "part_communes_rurales_pct"),
+                "—",
+                "—",
+                f"{mod1.rsquared:.3f}",
+                f"{mod1.rsquared_adj:.3f}",
+            ],
+            "Modèle 2 (+revenu)": [
+                fmt(mod2, "part_communes_rurales_pct"),
+                fmt(mod2, "niveau_vie_median"),
+                "—",
+                f"{mod2.rsquared:.3f}",
+                f"{mod2.rsquared_adj:.3f}",
+            ],
+            "Modèle 3 (+interaction)": [
+                fmt(mod3, "part_communes_rurales_pct"),
+                fmt(mod3, "niveau_vie_median"),
+                fmt(mod3, "interaction_rural_revenu"),
+                f"{mod3.rsquared:.3f}",
+                f"{mod3.rsquared_adj:.3f}",
+            ],
+        },
+        index=["Part communes rurales", "Niveau de vie médian", "Interaction", "R²", "R² ajusté"],
+    )
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"RÉGRESSION OLS — {label_y}")
-    print("="*60)
-    display(synthese)
+    print("=" * 60)
+    print(synthese.to_string())
     print("* = significatif à 5 % | ns = non significatif")
     return mod1, mod2, mod3
 
 
-# Fonction : graphiques de diagnostic 
 def diagnostics_ols(modele, titre):
     """
-    Vérifie les deux hypothèses principales de la régression OLS :
+    Vérifie les deux hypothèses principales de la régression OLS.
 
     1. Homoscédasticité (variance constante des résidus)
        → Graphique résidus vs valeurs ajustées : le nuage doit être aléatoire
@@ -351,14 +371,13 @@ def diagnostics_ols(modele, titre):
        → Test de Shapiro-Wilk : H0 = normalité. Si p < 0.05 → non normal.
          Dans ce cas, les p-values de la régression sont à interpréter avec prudence.
     """
-    residus = modele.resid          
-    fitted  = modele.fittedvalues  
+    residus = modele.resid
+    fitted = modele.fittedvalues
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
 
     # Graphique 1 : résidus vs valeurs ajustées
-    axes[0].scatter(fitted, residus, alpha=0.6, color="#7f8c8d",
-                    edgecolors="white", s=40)
+    axes[0].scatter(fitted, residus, alpha=0.6, color="#7f8c8d", edgecolors="white", s=40)
     axes[0].axhline(0, color="red", linestyle="--", linewidth=1)
     axes[0].set_xlabel("Valeurs ajustées (prédites par le modèle)")
     axes[0].set_ylabel("Résidus (observé - prédit)")
@@ -382,41 +401,34 @@ def diagnostics_ols(modele, titre):
     # Test de Shapiro-Wilk
     # H0 : les résidus suivent une loi normale
     # Si p < 0.05 → on rejette H0 → résidus non normaux
-
     stat, p_sw = shapiro(residus)
     print(f"Shapiro-Wilk : W = {stat:.4f}, p = {p_sw:.4f}")
     if p_sw > 0.05:
         print("→ Résidus normaux (p > 0.05)")
     else:
-        print("→ Résidus non normaux (p < 0.05) attention — interpréter les IC avec prudence")
+        print("→ Résidus non normaux (p < 0.05) — interpréter les IC avec prudence")
 
 
-# Fonction pour formater et afficher une table avec Great Tables
 def afficher_gt_part_modale(df_pct, annee):
+    """
+    Formate et affiche une table Great Tables des parts modales par département.
+    """
     df_plot = df_pct.reset_index()
-    
-    # Sécurité pour les noms de colonnes
-    new_cols = ['Département']
+
+    # Normalisation des noms de colonnes (gestion des MultiIndex éventuels)
+    new_cols = ["Département"]
     for col in df_plot.columns[1:]:
-        # Si c'est un tuple (MultiIndex), on prend le libellé, sinon on garde tel quel
         new_cols.append(col[1] if isinstance(col, tuple) else col)
     df_plot.columns = new_cols
 
-    # Liste des colonnes numériques pour le formatage
-    cols_numeriques = [c for c in df_plot.columns if c != 'Département']
+    cols_numeriques = [c for c in df_plot.columns if c != "Département"]
 
     return (
         GT(df_plot)
         .tab_header(
             title=f"Parts modales de transport par département en {annee}",
-            subtitle="Répartition en % des actifs"
+            subtitle="Répartition en % des actifs",
         )
-        .fmt_number(
-            columns=cols_numeriques,
-            decimals=1
-        )
-        .tab_options(
-            table_width="100%",
-            heading_align="left"
-        )
+        .fmt_number(columns=cols_numeriques, decimals=1)
+        .tab_options(table_width="100%", heading_align="left")
     )
