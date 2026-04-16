@@ -5,7 +5,7 @@ et **taux de valorisation des déchets ménagers** en France métropolitaine.
 
 ---
 
-## Problématique
+## 1. Problématique
 
 Les performances de valorisation des déchets varient considérablement d'un
 département à l'autre. Ce projet cherche à répondre à deux hypothèses :
@@ -24,7 +24,7 @@ On s'interesse aussi à l'effet "transport" (type de déplacement).
 
 ---
 
-## Données utilisées
+## 2. Données utilisées
 
 | Source        | Fichier                                       | Description                                | Accès |
 |---------------|-----------------------------------------------|--------------------------------------------|-------|
@@ -39,7 +39,7 @@ Les fichiers de données sont sur onyxia avec un lien directement dans le notebo
 
 ---
 
-## Structure du projet
+## 3. Structure du projet
 
 ```
 projet_pythonDS/
@@ -69,7 +69,7 @@ projet_pythonDS/
 
 ---
 
-## Installation
+## 3. Installation
 
 ```bash
 # 1. Cloner le dépôt
@@ -82,7 +82,7 @@ pip install -r Requirements.txt
 
 ---
 
-## Lancement
+## 4. Lancement
 
 Ouvrir `notebook_recyclage_projet_python2.ipynb` dans VS Code, puis :
 
@@ -91,7 +91,7 @@ Ouvrir `notebook_recyclage_projet_python2.ipynb` dans VS Code, puis :
 
 ---
 
-## Plan du notebook
+## 5. Plan du notebook
 
 | Section | Contenu |
 |---|---|
@@ -103,7 +103,7 @@ Ouvrir `notebook_recyclage_projet_python2.ipynb` dans VS Code, puis :
 | 5 | Conclusion |
 
 ---
-## Les variables importantes
+## 6. Les variables importantes
 | Variable | Source | Description | Unité |
 |---|---|---|---|
 | `taux_valo_total_pct` | SINOE | Taux de valorisation total (matière + organique) | % du tonnage total |
@@ -115,7 +115,67 @@ Ouvrir `notebook_recyclage_projet_python2.ipynb` dans VS Code, puis :
 
 > **UC** = unité de consommation (mesure INSEE du revenu par ménage ajustée à sa taille)
 
-## Choix du modèle
+## 7. Visualisations
+
+### Distributions (section 3.1)
+Les histogrammes montrent la distribution de chaque variable sur les 96 départements.
+La valorisation organique est très asymétrique — quelques départements composent
+beaucoup plus que la moyenne. La ruralité présente une distribution bimodale :
+beaucoup de départements très ruraux (>90%) et quelques très urbains (<20%).
+
+### Nuages de points (section 3.2)
+Six graphiques croisant les 3 indicateurs de valorisation (total, matière, organique)
+avec les 2 variables explicatives (ruralité, niveau de vie).
+La droite de régression et la corrélation de Pearson sont affichées sur chaque graphique.
+Les 3 départements les plus atypiques (outliers) sont annotés.
+
+### Matrice de corrélation (section 3.3)
+Heatmap des corrélations de Pearson entre toutes les variables.
+Permet de repérer d'un coup d'œil les relations fortes et la colinéarité éventuelle
+entre variables explicatives.
+
+### Cartes choroplèthes (section 3.4)
+5 cartes de France colorant chaque département selon l'intensité d'une variable.
+Permet de vérifier si les patterns statistiques ont une cohérence géographique.
+
+### Carte typologique (section 3.5)
+Croisement manuel de deux critères binaires (rural/urbain × valorisation forte/faible)
+donnant 4 profils territoriaux. Les cas "rural / valorisation faible" sont
+particulièrement intéressants car ils montrent que la ruralité seule ne suffit pas.
+
+## 6. Clustering K-Means
+
+En complément de l'analyse par régression, un clustering K-Means a été réalisé
+pour regrouper automatiquement les départements sans définir de seuils à la main.
+
+### Variables utilisées
+- `taux_valo_total_pct`
+- `part_communes_rurales_pct`
+- `niveau_vie_median`
+
+> Les variables sont normalisées avant le clustering (StandardScaler)
+> pour éviter que le niveau de vie (20 000-30 000€) n'écrase les autres variables (0-100%).
+
+### Choix du nombre de clusters
+Le nombre de clusters k=4 a été retenu via la **méthode du coude**
+(graphique inertie vs k) et pour permettre la comparaison avec les
+4 profils manuels de la carte typologique.
+
+### Résultats
+
+| Cluster | Couleur | Profil | Valorisation | Ruralité | Niveau de vie |
+|---|---|---|---|---|---|
+| 0 | Vert | Rural / valorisation moyenne | 46% | 90% | 22 386€ |
+| 1 | Bleu | Urbain / riche | 39% | 31% | 28 925€ |
+| 2 | Jaune | Rural / valorisation forte | 63% | 90% | 22 383€ |
+| 3 | Gris | Urbain / revenu intermédiaire | 38% | 31% | 23 170€ |
+
+### Enseignement principal
+Les clusters 0 et 2 ont le même profil territorial et socio-économique
+mais des performances très différentes. C'est donc **l'organisation des
+filières locales** qui explique les écarts, pas la ruralité ni le revenu.
+
+## 7. Choix du modèle
 
 Nous avons opté pour une **régression linéaire OLS** (moindres carrés ordinaires) pour deux raisons :
 
@@ -139,7 +199,7 @@ Le **R² ajusté** permet de comparer les modèles : si l'ajout d'une variable n
 - Les **résidus ne sont pas parfaitement normaux** (test de Shapiro-Wilk p < 0.05) : les p-values sont à interpréter avec prudence
 - L'analyse est **transversale** (une seule année) : elle ne permet pas de conclure sur des effets causaux
 
-## Résultats principaux
+## 8. Résultats principaux
 
 - La **ruralité** est positivement et significativement associée à la valorisation,
   portée principalement par la **valorisation organique** (compostage).
@@ -147,6 +207,10 @@ Le **R² ajusté** permet de comparer les modèles : si l'ajout d'une variable n
 - Le **niveau de vie médian** n'est pas un déterminant significatif.
 - Le **terme d'interaction** ruralité × revenu n'est pas significatif :
   l'effet de la ruralité est indépendant de la richesse du département.
+- Le **clustering K-Means** confirme et affine ces résultats : les clusters 0 et 2
+  ont exactement le même profil (ruraux, revenus modestes) mais des taux de
+  valorisation différents , ce qui suggère que **l'organisation locale des filières de tri** est le facteur clé non capté
+  par nos variables.
 
 ---
 
