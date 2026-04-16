@@ -73,7 +73,7 @@ projet_pythonDS/
 
 ```bash
 # 1. Cloner le dépôt
-git clone <url-du-repo>
+git clone https://github.com/TeodoraHub/projet_pythonDS.git
 cd projet_pythonDS
 
 # 2. Installer les dépendances
@@ -158,8 +158,7 @@ pour regrouper automatiquement les départements sans définir de seuils à la m
 
 ### Choix du nombre de clusters
 Le nombre de clusters k=4 a été retenu via la **méthode du coude**
-(graphique inertie vs k) et pour permettre la comparaison avec les
-4 profils manuels de la carte typologique.
+(graphique inertie vs k) et pour permettre la comparaison avec les 4 profils manuels de la carte typologique.
 
 ### Résultats
 
@@ -209,8 +208,7 @@ Le **R² ajusté** permet de comparer les modèles : si l'ajout d'une variable n
   l'effet de la ruralité est indépendant de la richesse du département.
 - Le **clustering K-Means** confirme et affine ces résultats : les clusters 0 et 2
   ont exactement le même profil (ruraux, revenus modestes) mais des taux de
-  valorisation différents , ce qui suggère que **l'organisation locale des filières de tri** est le facteur clé non capté
-  par nos variables.
+  valorisation différents , ce qui suggère que **l'organisation locale des filières de tri** est le facteur clé non capté par nos variables.
 
 ---
 
