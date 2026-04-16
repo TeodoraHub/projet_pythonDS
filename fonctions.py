@@ -38,7 +38,7 @@ def get_ademe_data() -> pd.DataFrame:
     return df
 
 
-def charger_sinoe(path: str) -> pd.DataFrame:
+def charger_sinoe(df) -> pd.DataFrame:
     """Charge et nettoie les données SINOE.
     
     Étapes :
@@ -54,7 +54,6 @@ def charger_sinoe(path: str) -> pd.DataFrame:
     - taux_valo_total_pct, taux_valo_matiere_pct, taux_valo_organique_pct
     """
     # etape 1 lecture du fichier csv
-    df = pd.read_csv(path, sep=",", encoding="utf-8")
     print(f"Dimensions brutes : {df.shape}")
     print(f"Années disponibles : {sorted(df['ANNEE'].unique())}")
     print(f"Types de traitement : {df['L_TYP_REG_SERVICE'].unique().tolist()}")
