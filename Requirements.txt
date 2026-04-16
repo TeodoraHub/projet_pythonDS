@@ -1,0 +1,13 @@
+# ─────────────────────────────────────────────
+# requirements.txt — dépendances du projet
+# ─────────────────────────────────────────────
+# Installer avec : pip install -r requirements.txt
+
+pandas
+openpyxl
+geopandas
+matplotlib
+seaborn
+scipy
+statsmodels
+numpy
