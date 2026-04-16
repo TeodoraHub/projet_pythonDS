@@ -446,6 +446,5 @@ def extraire_extremes(data, nom_mode):
 
     print(f"\n--- {nom_mode.upper()} : Les plus fortes PROGRESSIONS ---")
     print(top_progression.to_string())
-
     print(f"\n--- {nom_mode.upper()} : Les plus forts RECULS ---")
     print(top_recul.to_string())
