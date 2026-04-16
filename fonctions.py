@@ -1,6 +1,13 @@
 import pandas as pd
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import seaborn as sns
+import statsmodels.api as sm
+import numpy as np
 import requests
 from io import StringIO
+from scipy.stats import pearsonr, spearmanr, shapiro
 
 
 # URL directe du fichier CSV ADEME sur data.ademe.fr
@@ -32,6 +39,7 @@ def get_ademe_data() -> pd.DataFrame:
     df = pd.read_csv(StringIO(response.text), sep=None, engine='python')
     print(f"Fichier ADEME chargé : {df.shape[0]} lignes × {df.shape[1]} colonnes")
     return df
+
 def charger_sinoe(path: str) -> pd.DataFrame:
     """Charge et nettoie les données SINOE.
     
@@ -91,3 +99,247 @@ def charger_sinoe(path: str) -> pd.DataFrame:
 
     print(f"{len(dept)} départements après agrégation")
     return dept
+
+def charger_ruralite(path: str) -> pd.DataFrame:
+    """Charge et nettoie les données FET (grille de densité INSEE).
+    
+    Retourne un DataFrame à l'échelle départementale avec :
+    - part_communes_rurales_pct : % de communes peu ou très peu denses
+    
+    Remarque : l'indicateur n'est pas pondéré par la population,
+    ce qui peut surreprésenter des communes faiblement peuplées.
+    """
+    df = pd.read_excel(path, sheet_name="Figure 1", skiprows=2)
+    # skiprows=2 : les deux premières lignes sont un en-tête inutile
+
+    df.columns = ["code_commune", "lib_commune", "code_typologie", "lib_typologie"]
+
+    print(f"{len(df)} communes chargées")
+    print(f"Typologies : {df['lib_typologie'].unique().tolist()}")
+
+    # Codes communes sur 5 caractères  
+    df["code_commune"] = df["code_commune"].astype(str).str.zfill(5)
+
+    # Codes département sur les 2 premiers caractères 
+    df["code_dept"] = df["code_commune"].str[:2]
+
+    # On identifie les communes rurales
+    types_ruraux = ["Communes peu denses", "Communes très peu denses"]
+    df["est_rural"] = df["lib_typologie"].isin(types_ruraux)
+
+   # On agrège par département
+    dept = (
+        df.groupby("code_dept", as_index=False)
+        .agg(
+            nb_communes=("code_commune", "count"),
+            nb_communes_rurales=("est_rural", "sum"),
+        )
+    )
+    # On calcule la part des communes rurales
+    dept["part_communes_rurales_pct"] = (
+        dept["nb_communes_rurales"] / dept["nb_communes"] * 100
+    )
+    print(f"{len(dept)} départements après agrégation")
+    return dept
+
+def charger_niveau_vie(path: str) -> pd.DataFrame:
+    """Charge et nettoie les données INSEE sur le niveau de vie médian.
+    
+    Retourne un DataFrame à l'échelle départementale avec :
+    - niveau_vie_median : niveau de vie annuel médian en euros
+    """
+
+    # Lecture
+    df = pd.read_excel(path, sheet_name="Territoire - Figure 1")
+    print(f"Colonnes disponibles : {df.columns.tolist()}")
+    print(f"Dimensions : {df.shape}")
+
+    # quelques changements de nom, code_dept pour harmoniser et departement_rev 
+    # pour département revenu
+    df = df.rename(columns={
+        "Code département": "code_dept",
+        "Département": "departement_rev",
+        "Niveau de vie annuel médian": "niveau_vie_median",
+    })
+    
+    # Codes département sur les 2 premiers caractères 
+    df["code_dept"] = df["code_dept"].astype(str).str.zfill(2)
+
+    #  Conversion numérique 
+    #  si une valeur n'est pas un nombre alors on l'enregistre comme NaN 
+    df["niveau_vie_median"] = pd.to_numeric(df["niveau_vie_median"], errors="coerce")
+
+    print(f"\nValeurs manquantes sur niveau_vie_median : {df['niveau_vie_median'].isna().sum()}")
+    return df[["code_dept", "departement_rev", "niveau_vie_median"]]
+
+# Fonction : nuage de points avec régression 
+
+def scatter_regression(ax, df, x_col, y_col, x_label, y_label, color, n_outliers=3):
+    """Nuage de points avec droite de régression et annotation des outliers.
+    Les outliers annotés sont les départements dont l'écart à la droite de
+    régression (résidu) est le plus grand en valeur absolue."""
+    
+    # Suppression des lignes avec valeurs manquantes
+    tmp = df[[x_col, y_col, "departement"]].dropna()
+
+    # Nuage de points
+    ax.scatter(tmp[x_col], tmp[y_col], alpha=0.6, color=color, edgecolors="white", s=50)
+
+    # Calcul et tracé de la droite de régression (degré 1 = linéaire)
+    pente, ordonnee = np.polyfit(tmp[x_col], tmp[y_col], 1)
+    x_range = np.linspace(tmp[x_col].min(), tmp[x_col].max(), 100)
+    ax.plot(x_range, pente * x_range + ordonnee,
+            "k--", linewidth=1.5, label="Régression linéaire")
+
+    # On annote les 3 outliers les plus éloignés de la droite
+    residus = tmp[y_col] - (pente * tmp[x_col] + ordonnee)
+    outliers = residus.abs().nlargest(n_outliers).index
+    for idx in outliers:
+        ax.annotate(
+            tmp.loc[idx, "departement"],
+            xy=(tmp.loc[idx, x_col], tmp.loc[idx, y_col]),
+            fontsize=7, xytext=(4, 4), textcoords="offset points"
+        )
+
+    # Corrélation de Pearson affichée avec le titre
+    r, p = pearsonr(tmp[x_col], tmp[y_col])
+    ax.set_title(f"{y_label} ~ {x_label}\nr = {r:.3f}  (p = {p:.4f})", fontsize=9)
+    ax.legend(fontsize=8)
+
+def attribuer_profil(row, med_valo, med_rural):
+    """Retourne le profil territorial d'un département selon ses médianes."""
+    valo  = row["taux_valo_total_pct"]       >= med_valo
+    rural = row["part_communes_rurales_pct"] >= med_rural
+
+    if   not rural and not valo: return "Urbain / valorisation faible"
+    elif not rural and     valo: return "Urbain / valorisation forte"
+    elif     rural and not valo: return "Rural  / valorisation faible"
+    else:                        return "Rural  / valorisation forte"
+
+
+
+def afficher_correlations(df, x_col, y_col, x_label, y_label):
+    """
+    Calcule et affiche les corrélations de Pearson et Spearman.
+    Pearson  : mesure l'association LINÉAIRE. Sensible aux outliers.
+    Spearman : mesure l'association MONOTONE (sur les rangs). Plus robuste.
+    Si les deux divergent → la relation n'est pas strictement linéaire,
+    ou des départements extrêmes "tirent" la corrélation de Pearson.
+    """
+    tmp = df[[x_col, y_col]].dropna()
+    r_p, p_p = pearsonr(tmp[x_col],  tmp[y_col])
+    r_s, p_s = spearmanr(tmp[x_col], tmp[y_col])
+    sig = "significatif" if p_p < 0.05 else "non significatif"
+    print(f"  {x_label} X {y_label}")
+    print(f"  Pearson  r = {r_p:.3f}  (p = {p_p:.6f})")
+    print(f"  Spearman ρ = {r_s:.3f}  (p = {p_s:.6f})")
+    print(f"  → {sig} au seuil 5 %\n")
+
+
+
+def regression_ols(df, var_y, label_y):
+    """
+    Estime 3 modèles OLS emboîtés et affiche un tableau de synthèse.
+    Modèle 1 : ruralité seule
+    Modèle 2 : ruralité + niveau de vie
+    Modèle 3 : ruralité + niveau de vie + interaction
+    Modèles "emboîtés" : chaque modèle ajoute une variable au précédent.
+    On compare le R² ajusté pour évaluer l'apport marginal de chaque variable.
+    Si le R² ajusté n'augmente pas, la variable ajoutée n'est pas utile.
+    """
+    cols = [var_y, "part_communes_rurales_pct", "niveau_vie_median",
+            "interaction_rural_revenu"]
+    tmp = df[cols].dropna()
+    y   = tmp[var_y]
+
+    X1 = sm.add_constant(tmp[["part_communes_rurales_pct"]])
+    X2 = sm.add_constant(tmp[["part_communes_rurales_pct", "niveau_vie_median"]])
+    X3 = sm.add_constant(tmp[["part_communes_rurales_pct", "niveau_vie_median",
+                               "interaction_rural_revenu"]])
+    mod1 = sm.OLS(y, X1).fit()
+    mod2 = sm.OLS(y, X2).fit()
+    mod3 = sm.OLS(y, X3).fit()
+
+    def fmt(mod, var):
+        if var not in mod.params: return "—"
+        sig = "*" if mod.pvalues[var] < 0.05 else "ns"
+        return f"{mod.params[var]:.4f} ({sig})"
+
+    synthese = pd.DataFrame({
+        "Modèle 1 (ruralité)": [
+            fmt(mod1, "part_communes_rurales_pct"), "—", "—",
+            f"{mod1.rsquared:.3f}", f"{mod1.rsquared_adj:.3f}",
+        ],
+        "Modèle 2 (+revenu)": [
+            fmt(mod2, "part_communes_rurales_pct"),
+            fmt(mod2, "niveau_vie_median"), "—",
+            f"{mod2.rsquared:.3f}", f"{mod2.rsquared_adj:.3f}",
+        ],
+        "Modèle 3 (+interaction)": [
+            fmt(mod3, "part_communes_rurales_pct"),
+            fmt(mod3, "niveau_vie_median"),
+            fmt(mod3, "interaction_rural_revenu"),
+            f"{mod3.rsquared:.3f}", f"{mod3.rsquared_adj:.3f}",
+        ],
+    }, index=["Part communes rurales", "Niveau de vie médian",
+              "Interaction", "R²", "R² ajusté"])
+
+    print(f"\n{'='*60}")
+    print(f"RÉGRESSION OLS — {label_y}")
+    print("="*60)
+    display(synthese)
+    print("* = significatif à 5 % | ns = non significatif")
+    return mod1, mod2, mod3
+
+
+
+# Fonction : graphiques de diagnostic 
+def diagnostics_ols(modele, titre):
+    """
+    Vérifie les deux hypothèses principales de la régression OLS :
+
+    1. Homoscédasticité (variance constante des résidus)
+       → Graphique résidus vs valeurs ajustées : le nuage doit être aléatoire
+         autour de 0, sans forme en entonnoir.
+
+    2. Normalité des résidus
+       → Q-Q plot : les points doivent suivre la diagonale.
+       → Test de Shapiro-Wilk : H0 = normalité. Si p < 0.05 → non normal.
+         Dans ce cas, les p-values de la régression sont à interpréter avec prudence.
+    """
+    residus = modele.resid          # différence entre valeur observée et prédite
+    fitted  = modele.fittedvalues   # valeurs prédites par le modèle
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+
+    # Graphique 1 : résidus vs valeurs ajustées
+    axes[0].scatter(fitted, residus, alpha=0.6, color="#7f8c8d",
+                    edgecolors="white", s=40)
+    axes[0].axhline(0, color="red", linestyle="--", linewidth=1)
+    axes[0].set_xlabel("Valeurs ajustées (prédites par le modèle)")
+    axes[0].set_ylabel("Résidus (observé - prédit)")
+    axes[0].set_title("Résidus vs valeurs ajustées")
+
+    # Graphique 2 : Q-Q plot
+    # line="s" : droite de référence basée sur l'écart-type des résidus
+    sm.qqplot(residus, line="s", ax=axes[1], alpha=0.6)
+    axes[1].set_title("Q-Q plot (normalité des résidus)")
+
+    # Graphique 3 : histogramme des résidus
+    axes[2].hist(residus, bins=15, color="#95a5a6", edgecolor="white")
+    axes[2].set_xlabel("Résidus")
+    axes[2].set_ylabel("Fréquence")
+    axes[2].set_title("Distribution des résidus")
+
+    plt.suptitle(f"Diagnostics — {titre}", fontsize=12)
+    plt.tight_layout()
+    plt.show()
+
+    # Test de Shapiro-Wilk
+    stat, p_sw = shapiro(residus)
+    print(f"Shapiro-Wilk : W = {stat:.4f}, p = {p_sw:.4f}")
+    if p_sw > 0.05:
+        print("→ Résidus normaux (p > 0.05)")
+    else:
+        print("→ Résidus non normaux (p < 0.05) attention — interpréter les IC avec prudence")
+
