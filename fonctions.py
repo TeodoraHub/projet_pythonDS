@@ -426,9 +426,26 @@ def afficher_gt_part_modale(df_pct, annee):
     return (
         GT(df_plot)
         .tab_header(
-            title=f"Parts modales de transport par département en {annee}",
+            title=f"Parts de chaque mode de transport par département en {annee}",
             subtitle="Répartition en % des actifs",
         )
         .fmt_number(columns=cols_numeriques, decimals=1)
         .tab_options(table_width="100%", heading_align="left")
     )
+
+
+def extraire_extremes(data, nom_mode):
+    if isinstance(data, pd.DataFrame):
+        serie = data.iloc[:, 0]
+    else:
+        serie = data
+
+    # Tri des valeurs (maintenant on est sûr que c'est une Series)
+    top_progression = serie.sort_values(ascending=False).head(5)
+    top_recul = serie.sort_values(ascending=True).head(5)
+
+    print(f"\n--- {nom_mode.upper()} : Les plus fortes PROGRESSIONS ---")
+    print(top_progression.to_string())
+
+    print(f"\n--- {nom_mode.upper()} : Les plus forts RECULS ---")
+    print(top_recul.to_string())
