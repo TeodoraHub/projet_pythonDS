@@ -214,7 +214,7 @@ Le **R² ajusté** permet de comparer les modèles : si l'ajout d'une variable n
 
 ## Auteurs
 
-Projet réalisé par Teodora Moldovan, Delphine Monnier Ragaigne et Mounene Kpakou dans le cadre du cours de Python pour la data science.
+Projet réalisé par Teodora Moldovan, Delphine Monnier Ragaigne et M'Mounéné Kpakou dans le cadre du cours de Python pour la data science.
 
 ## Sources des données (pour aller plus loin)
 
