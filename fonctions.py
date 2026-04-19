@@ -2,89 +2,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import numpy as np
-import requests
 from io import StringIO
 from scipy.stats import pearsonr, spearmanr, shapiro
 from great_tables import GT
-
-
-def charger_ruralite(path: str) -> pd.DataFrame:
-    """
-    Charge et nettoie les données FET (grille de densité INSEE).
-
-    La grille de densité classe chaque commune en 4 catégories :
-    - Communes densément peuplées
-    - Communes de densité intermédiaire
-    - Communes peu denses          ← considérées rurales
-    - Communes très peu denses     ← considérées rurales
-
-    Retourne un DataFrame à l'échelle départementale avec :
-    - part_communes_rurales_pct : % de communes peu ou très peu denses
-
-    Remarque : l'indicateur n'est pas pondéré par la population,
-    ce qui peut surreprésenter des communes faiblement peuplées.
-    """
-    # skiprows=2 : les deux premières lignes sont un en-tête inutile
-    df = pd.read_excel(path, sheet_name="Figure 1", skiprows=2)
-    df.columns = ["code_commune", "lib_commune", "code_typologie", "lib_typologie"]
-
-    print(f"{len(df)} communes chargées")
-    print(f"Typologies : {df['lib_typologie'].unique().tolist()}")
-
-    # Codes communes sur 5 caractères
-    df["code_commune"] = df["code_commune"].astype(str).str.zfill(5)
-
-    # Code département = 2 premiers caractères du code commune
-    df["code_dept"] = df["code_commune"].str[:2]
-
-    # Identification des communes rurales
-    types_ruraux = ["Communes peu denses", "Communes très peu denses"]
-    df["est_rural"] = df["lib_typologie"].isin(types_ruraux)
-
-    # Agrégation par département
-    dept = (
-        df.groupby("code_dept", as_index=False)
-        .agg(
-            nb_communes=("code_commune", "count"),
-            nb_communes_rurales=("est_rural", "sum"),
-        )
-    )
-
-    # Part des communes rurales
-    dept["part_communes_rurales_pct"] = (
-        dept["nb_communes_rurales"] / dept["nb_communes"] * 100
-    )
-
-    print(f"{len(dept)} départements après agrégation")
-    return dept
-
-
-def charger_niveau_vie(path: str) -> pd.DataFrame:
-    """
-    Charge et nettoie les données INSEE sur le niveau de vie médian.
-
-    Retourne un DataFrame à l'échelle départementale avec :
-    - niveau_vie_median : niveau de vie annuel médian en euros
-    """
-    df = pd.read_excel(path, sheet_name="Territoire - Figure 1")
-    print(f"Colonnes disponibles : {df.columns.tolist()}")
-    print(f"Dimensions : {df.shape}")
-
-    df = df.rename(columns={
-        "Code département": "code_dept",
-        "Département": "departement_rev",
-        "Niveau de vie annuel médian": "niveau_vie_median",
-    })
-
-    # Codes département sur 2 caractères
-    df["code_dept"] = df["code_dept"].astype(str).str.zfill(2)
-
-    # Conversion numérique : valeurs non numériques enregistrées comme NaN
-    df["niveau_vie_median"] = pd.to_numeric(df["niveau_vie_median"], errors="coerce")
-
-    print(f"\nValeurs manquantes sur niveau_vie_median : {df['niveau_vie_median'].isna().sum()}")
-    return df[["code_dept", "departement_rev", "niveau_vie_median"]]
-
 
 def scatter_regression(ax, df, x_col, y_col, x_label, y_label, color, n_outliers=3):
     """

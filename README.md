@@ -45,22 +45,15 @@ Les fichiers de données sont sur onyxia avec un lien directement dans le notebo
 projet_pythonDS/
 ├── notebook_recyclage_projet_python.ipynb  # Notebook principal
 ├── fonctions.py                            # Fonctions réutilisables
-├── Requirements.txt                        # Dépendances Python
+├── requirements.txt                        # Dépendances Python
 ├── README.md                               # Ce fichier
 ├── .gitignore                              # Fichiers exclus de Git
-├── SINOE04_DestinationDmaParTypeTraitement.csv
-├── FET2021-19.xlsx
-└── niv2021.xlsx
 ```
 
 ### Contenu de `fonctions.py`
 
 | Fonction | Description |
 |---|---|
-| `charger_sinoe(path)` | lit et nettoie le fichier SINOE, calcule les taux de valorisation |
-| `get_ademe_data()` | Télécharge le fichier SINOE directement depuis l'API ADEME |
-| `charger_ruralite(path)` | Charge la grille de densité INSEE, calcule la part de communes rurales |
-| `charger_niveau_vie(path)` | Charge le niveau de vie médian par département |
 | `scatter_regression(ax, df, ...)` | Nuage de points avec droite de régression et annotation des outliers |
 | `attribuer_profil(row, med_valo, med_rural)` | Attribue un profil territorial à un département |
 | `afficher_correlations(df, ...)` | Calcule et affiche les corrélations de Pearson et Spearman |
@@ -76,7 +69,7 @@ projet_pythonDS/
 git clone https://github.com/TeodoraHub/projet_pythonDS.git
 cd projet_pythonDS
 
-# 2. Installer les dépendances
+# 2. Installer les dépendances manulement ou executer tout le code.
 pip install -r Requirements.txt
 ```
 
