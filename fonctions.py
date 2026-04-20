@@ -6,6 +6,7 @@ from io import StringIO
 from scipy.stats import pearsonr, spearmanr, shapiro
 from great_tables import GT
 
+
 def scatter_regression(ax, df, x_col, y_col, x_label, y_label, color, n_outliers=3):
     """
     Trace un nuage de points avec droite de régression et annotation des outliers.
