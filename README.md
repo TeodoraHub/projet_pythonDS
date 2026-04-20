@@ -1,36 +1,38 @@
-# Recyclage et territoire : à la recherche d'un profil écologique géographique ?
+# Recyclage et déplacements : à la recherche d'un profil écologique géographique ?
+Analyse croisée de la valorisation des déchets et des modes de transport (2016-2022)
 
-Projet de data science explorant les liens entre **caractéristiques territoriales** (ruralité, niveau de vie, transport)
-et **taux de valorisation des déchets ménagers** en France métropolitaine.
+## Problématique
 
----
+Les questions écologiques constituent une thématique importante notamment dans la gestion des territoires. Partant de ce constat, nous avons cherché un indicateur de comportement écologique que l'on pourrait croiser avec des données géographiques liés à la population francaise. Nous avons donc décidé de nous interesser à la **valorisation des déchets ménagers et assimilés (DMA)**, et aux **modes de déplacement**.
 
-## 1. Problématique
+Nous allons montrer que tant la valorisation que les modes de transport varient considérablement d'un département à l'autre, et nous présenterons quelques facteurs territoriaux et socio-économiques expliquant ces disparités.
 
-Les performances de valorisation des déchets varient considérablement d'un
-département à l'autre. Ce projet cherche à répondre à deux hypothèses :
+Nous cherchons à identifier si certains départements se distinguent par un "profil écologique complet" :
 
-1. **Hypothèse territoriale** : les départements ruraux valorisent mieux leurs
-   déchets (compostage, gestion différenciée).
-2. **Hypothèse socio-économique** : les départements plus aisés investissent
-   davantage dans les infrastructures de tri.
+Côté Déchets : Quels départements valorisent le mieux leurs déchets ménagers (Recyclage & Compostage) ? Est-ce lié à la richesse ou à la ruralité ?
 
-La valorisation est analysée en **deux composantes séparées** :
-- **Valorisation matière** : recyclage (plastique, verre, papier, métal...)
-- **Valorisation organique** : compostage, méthanisation
+Ce notebook explore deux hypothèses principales :
+1. **Hypothèse territoriale** : les départements ruraux, bénéficiant d'une gestion différente des déchets (compostage, valorisation organique), présenteraient de meilleurs taux de valorisation.
+2. **Hypothèse socio-économique** : les départements plus aisés investiraient davantage dans les infrastructures de tri et de recyclage.
 
-On s'interesse aussi à l'effet "transport" (type de déplacement).
+Nous nous sommes aussi intéressés aux deux composantes de la valorisation :
+- **Valorisation de la matière** : recyclage
+- **Valorisation organique** : compostage et méthanisation
 
+Côté Mobilité : Comment l'usage du vélo et des transports en commun a-t-il évolué entre 2016 et 2022 ?
+Comprendre comment les **modes de transport** utilisés pour aller travailler ont évolué entre **2016 et 2022** en France métropolitaine, à l'échelle des départements.
 
----
+Synthèse : Existe-t-il une corrélation entre les zones qui recyclent le plus et celles qui utilisent le moins la voiture ?
 
-## 2. Données utilisées
+## Données utilisées
 
-| Source        | Fichier                                       | Description                                | Accès |
-|---------------|-----------------------------------------------|--------------------------------------------|-------|
-| ADEME / SINOE | `SINOE04_DestinationDmaParTypeTraitement.csv`  | Tonnages DMA par type de traitement        | [data.ademe.fr](https://data.ademe.fr) |
-| INSEE         | `FET2021-19.xlsx`                             | Grille de densité communale (urbain/rural) | [insee.fr](https://insee.fr) |
-| INSEE         | `niv2021.xlsx`                                | Niveau de vie médian annuel par département| [insee.fr](https://insee.fr) |
+| Source | Fichier | Description |
+|--------|---------|-------------|
+| ADEME / SINOE | `SINOE04_DestinationDmaParTypeTraitement.csv` | Tonnages de déchets par type de traitement et département |
+| INSEE | `DS_RP_NAVETTES_PRINC_2022_data.csv` | Déplacements domicile-travail selon le mode de transport, source **Recensement de la Population** (RP) de l'INSEE, disponibles sur data.gouv.fr.
+| INSEE | `FET2021-19.xlsx` | Grille de densité communale (urbain/rural) |
+| INSEE | `niv2021.xlsx` | Niveau de vie médian annuel par département(légèrement revu, les 3 premiers lignes ont été supprimées |
+
 
 >  Les 3 premières lignes de `niv2021.xlsx` ont été supprimées manuellement.
 Les fichiers de données sont sur onyxia avec un lien directement dans le notebook.
@@ -43,11 +45,11 @@ Les fichiers de données sont sur onyxia avec un lien directement dans le notebo
 
 ```
 projet_pythonDS/
-├── notebook_recyclage_projet_python.ipynb  # Notebook principal
-├── fonctions.py                            # Fonctions réutilisables
-├── requirements.txt                        # Dépendances Python
-├── README.md                               # Ce fichier
-├── .gitignore                              # Fichiers exclus de Git
+├── recyclage_et_deplacements.ipynb  # Notebook principal
+├── fonctions.py                     # Fonctions réutilisables
+├── requirements.txt                 # Dépendances Python
+├── README.md                        # Ce fichier
+├── .gitignore                       # Fichiers exclus de Git
 ```
 
 ### Contenu de `fonctions.py`
@@ -59,6 +61,8 @@ projet_pythonDS/
 | `afficher_correlations(df, ...)` | Calcule et affiche les corrélations de Pearson et Spearman |
 | `regression_ols(df, var_y, label_y)` | Estime 3 modèles OLS emboîtés et affiche un tableau de synthèse |
 | `diagnostics_ols(modele, titre)` | Graphiques de diagnostic du modèle OLS (résidus, Q-Q plot, Shapiro-Wilk) |
+| `afficher_gt_part_modale(df_pct, annee)` | Formate et affiche une table Great Tables des modes de transport (en %) par département|
+| `extraire_extremes(data, nom_mode)` | Tri et affiche le top 5 des modes de transport (en %) par département|
 
 ---
 
@@ -89,7 +93,7 @@ Ouvrir `notebook_recyclage_projet_python2.ipynb` dans VS Code, puis :
 | Section | Contenu |
 |---|---|
 | 0 | Imports et paramètres |
-| 1 | Chargement et nettoyage des 3 sources de données |
+| 1 | Chargement et nettoyage des sources de données |
 | 2 | Analyse descriptive (statistiques, top/flop départements) |
 | 3 | Visualisations (distributions, nuages de points, heatmap, cartes) |
 | 4 | Modélisation (corrélations, régressions OLS, diagnostics) |
@@ -104,9 +108,24 @@ Ouvrir `notebook_recyclage_projet_python2.ipynb` dans VS Code, puis :
 | `taux_valo_organique_pct` | SINOE | Taux de valorisation organique (compostage, méthanisation) | % du tonnage total |
 | `part_communes_rurales_pct` | FET INSEE | Part de communes peu ou très peu denses dans le département | % du nombre de communes |
 | `niveau_vie_median` | Filosofi INSEE | Niveau de vie annuel médian par département | € / an / UC |
-| `interaction_rural_revenu` | Calculée | Produit ruralité × niveau de vie (terme d'interaction pour la régression) | — |
+| `interaction_rural_revenu` | Calculée | Produit ruralité × niveau de vie (terme d'interaction pour la régression) | 
+| `part_mode_transport` | Calculée | Part de chaque mode de transport dans le total|
+— |
 
 > **UC** = unité de consommation (mesure INSEE du revenu par ménage ajustée à sa taille)
+
+# Modes de transport dans la base:
+
+| Code | Signification |
+| :--- | :--- |
+| 1 | Pas de transport (Télétravail / Travail à domicile) |
+| 2 | Marche à pied |
+| 3 | Vélo
+| 4 | Deux-roues motorisé (Scooter, Moto) |
+| 3T4 | Regroupement "Deux-roues" (Vélo + Moto) |
+| 5 | Voiture, camion ou fourgonnette |
+| 6 | Transport en commun |
+| _T | Total (tous modes confondus) |
 
 ## 7. Visualisations
 
