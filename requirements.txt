@@ -5,6 +5,7 @@
 
 pandas
 openpyxl
+mapclassify
 geopandas
 matplotlib
 seaborn
