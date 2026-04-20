@@ -215,3 +215,7 @@ Projet réalisé par Teodora Moldovan, Delphine Monnier Ragaigne et M'Mounéné 
 - [Grille de densité communale — INSEE](https://www.insee.fr/fr/information/6439600) : méthodologie et téléchargement FET
 - [Filosofi — INSEE](https://www.insee.fr/fr/metadonnees/source/serie/s1172) : revenus et niveaux de vie des ménages
 - [API ADEME data.ademe.fr](https://data.ademe.fr/api-doc) : documentation de l'API utilisée pour charger les données SINOE
+
+## Références
+
+Galiana, L. (2025). [*Python pour la data science*](https://pythonds.linogaliana.fr/). DOI : [10.5281/zenodo.8229676](https://doi.org/10.5281/zenodo.8229676)
