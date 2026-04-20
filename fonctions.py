@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import numpy as np
-from io import StringIO
+# from io import StringIO
 from scipy.stats import pearsonr, spearmanr, shapiro
 from great_tables import GT
 
@@ -262,8 +262,8 @@ def extraire_extremes(data, nom_mode):
         serie = data
 
     # Tri des valeurs (maintenant on est sûr que c'est une Series)
-    top_progression = serie.sort_values(ascending=False).head(5)
-    top_recul = serie.sort_values(ascending=True).head(5)
+    top_progression = serie.sort_values(ascending=False).head(10)
+    top_recul = serie.sort_values(ascending=True).head(10)
 
     print(f"\n--- {nom_mode.upper()} : Les plus fortes PROGRESSIONS ---")
     print(top_progression.to_string())
