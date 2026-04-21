@@ -1,6 +1,6 @@
 # Recyclage et déplacements : à la recherche d'un profil écologique géographique ?
 
-Analyse croisée de la valorisation des déchets et des modes de transport (2016-2022)
+Analyse croisée de la valorisation des déchets (en 2021) et des modes de transport utilisés (2016 et 2022)
 
 ## Problématique
 
