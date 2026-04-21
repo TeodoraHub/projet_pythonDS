@@ -6,6 +6,8 @@ import numpy as np
 from scipy.stats import pearsonr, spearmanr, shapiro
 from great_tables import GT
 
+# Fonctions à utiliser dans la partie descriptive et modelisation
+
 
 def scatter_regression(ax, df, x_col, y_col, x_label, y_label, color, n_outliers=3):
     """

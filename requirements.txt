@@ -5,9 +5,9 @@
 
 pandas
 openpyxl
-mapclassify
 geopandas
 matplotlib
+mapclassify
 seaborn
 scipy
 statsmodels

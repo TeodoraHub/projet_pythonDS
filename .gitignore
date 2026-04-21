@@ -8,11 +8,12 @@ venv/
 env/
 
 # Fichiers compilés Python
-__pycache__/
 *.py[cod]
 
 # Jupyter : checkpoints automatiques
 .ipynb_checkpoints/
+__pycache__/
+*.pyc
 
 # Éditeurs
 .vscode/
