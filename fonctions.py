@@ -234,7 +234,7 @@ def diagnostics_ols(modele, titre):
 
 def afficher_gt_part_modale(df_pct, annee):
     """
-    Formate et affiche une table Great Tables des parts modales par département.
+    Formate et affiche une table Great Tables des modes de transport par département.
     """
     df_plot = df_pct.reset_index()
 
