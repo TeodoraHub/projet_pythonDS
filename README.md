@@ -34,13 +34,16 @@ Synthèse : Existe-t-il une corrélation entre les zones qui recyclent le plus e
 ------------------------------------------------------------------------
 
 ## 3. Structure du projet
+## Structure du projet
 
+```text
 projet_pythonDS/
 ├── recyclage_et_deplacements.ipynb   # Notebook principal
 ├── fonctions.py                      # Fonctions réutilisables
-├── requirements.txt                 # Dépendances Python
-├── README.md                        # Ce fichier
-└── .gitignore                       # Fichiers exclus de Git
+├── requirements.txt                  # Dépendances Python
+├── README.md                         # Ce fichier
+└── .gitignore                        # Fichiers exclus de Git
+```
 
 ### Contenu de `fonctions.py`
 
